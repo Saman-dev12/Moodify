@@ -1,50 +1,88 @@
 import axios from 'axios';
 import { NextRequest, NextResponse } from 'next/server';
 
-interface Song {
-    id: string;
-    title: string;
-    image: (string | null)[];
-    album: string;
-    url: string;
-    type: string;
-    description: string;
-    primaryArtists: string;
-    singers: string;
-    language: string;
+interface SpotifySearchResponse {
+    playlists: {
+        href: string;
+        items: {
+            id: string;
+            name: string;
+            external_urls: {
+                spotify: string;
+            };
+            images: { url: string; height: number; width: number }[];
+            tracks: {
+                href: string;
+                total: number;
+            };
+            owner: {
+                display_name: string;
+            };
+            type: string;
+        }[];
+    };
 }
 
-const getJioSaavnPlaylist = async (mood: string) => {
+interface SpotifyPlaylistResponse {
+    tracks: {
+        items: {
+            track: {
+                id: string;
+                name: string;
+                artists: { name: string }[];
+                album: { name: string };
+                external_urls: { spotify: string };
+            };
+        }[];
+    };
+}
+
+const getSpotifyPlaylists = async (mood: string) => {
+    const accessToken = await getSpotifyAccessToken();
+
     const options = {
         method: 'GET',
-        url: 'https://saavn.dev/api/search',
-        params: { query: mood }
+        url: 'https://api.spotify.com/v1/search',
+        params: {
+            q: mood,
+            type: 'playlist',
+            limit: 5 // Fetch multiple playlists
+        },
+        headers: {
+            Authorization: `Bearer ${accessToken}`
+        }
     };
 
     try {
-        const { data } = await axios.request(options);
-        if (data.success && data.data.songs && data.data.songs.results) {
-            const songs = data.data.songs.results.map((song: Song) => ({
-                id: song.id,
-                title: song.title,
-                image: song.image[0] || null,
-                album: song.album,
-                url: song.url,
-                primaryArtists: song.primaryArtists,
-                singers: song.singers,
-                language: song.language
-            }));
-            // Shuffle the songs array
-            for (let i = songs.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [songs[i], songs[j]] = [songs[j], songs[i]];
+        const { data } = await axios.request<SpotifySearchResponse>(options);
+        if (data.playlists?.items?.length > 0) {
+            const allTracks = [];
+
+            // Fetch details for each playlist
+            for (const playlist of data.playlists.items) {
+                const playlistResponse = await axios.get<SpotifyPlaylistResponse>(
+                    `https://api.spotify.com/v1/playlists/${playlist.id}`,
+                    { headers: { Authorization: `Bearer ${accessToken}` } }
+                );
+
+                // Limit the number of tracks returned from each playlist
+                const tracks = playlistResponse.data.tracks.items.slice(0, 5).map(item => ({
+                    id: item.track.id,
+                    name: item.track.name,
+                    artists: item.track.artists.map(artist => artist.name).join(', '),
+                    album: item.track.album.name,
+                    url: item.track.external_urls.spotify,
+                }));
+
+                allTracks.push(...tracks); // Combine tracks from all playlists
             }
-            return songs;
+            
+            return allTracks;
         } else {
-            throw new Error('Invalid response structure');
+            throw new Error('No playlists found or invalid response structure');
         }
     } catch (error) {
-        console.error('Error fetching JioSaavn playlist:', error);
+        console.error('Error fetching Spotify playlists:', error);
         throw error;
     }
 };
@@ -58,17 +96,31 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const playlist = await getJioSaavnPlaylist(mood);
-        // Shuffle the playlist on each request
-        for (let i = playlist.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [playlist[i], playlist[j]] = [playlist[j], playlist[i]];
-        }
-        // Select a random subset of 10 songs
-        const randomSubset = playlist.slice(0, 10);
-        return NextResponse.json({ playlist: randomSubset });
+        const tracks = await getSpotifyPlaylists(mood);
+        return NextResponse.json({ tracks });
     } catch (error) {
-        console.error('Error fetching playlist:', error);
-        return NextResponse.json({ error: 'Failed to retrieve playlist' }, { status: 500 });
+        console.error('Error fetching playlists:', error);
+        return NextResponse.json({ error: 'Failed to retrieve playlists' }, { status: 500 });
     }
 }
+
+const getSpotifyAccessToken = async () => {
+    const clientId = process.env.SPOTIFY_CLIENT_ID;
+    const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+
+    try {
+        const response = await axios.post('https://accounts.spotify.com/api/token', new URLSearchParams({
+            grant_type: 'client_credentials'
+        }).toString(), {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
+            }
+        });
+        
+        return response.data.access_token;
+    } catch (error) {
+        console.error('Error fetching Spotify access token:', error);
+        throw error;
+    }
+};
