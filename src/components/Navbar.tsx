@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useSession, signIn, signOut } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
 function Navbar() {
@@ -45,7 +45,7 @@ function Navbar() {
                 <div className="flex-shrink-0">
                   <button onClick={toggleDropdown}>
                     {session.user.image && (
-                      <img src={session.user.image} alt="User Avatar" className="h-8 w-8 rounded-full" />
+                      <img src={session.user.image} alt="User Avatar" className="h-10 w-10 rounded-full" />
                     )}
                   </button>
                 </div>
@@ -53,7 +53,7 @@ function Navbar() {
                   <div id="dropdown" className="absolute top-10 right-0 w-64 bg-[#2E2E2E] rounded-lg shadow-lg z-10 transition-transform transform scale-95 origin-top-right p-4">
                     <div className="block px-4 py-2 text-sm text-gray-300 font-semibold w-full text-left">Welcome back, {session.user.email}!</div>
                     
-                    <Link href={'/saved'} className="block px-4 py-2 text-sm text-white bg-[#3A3A3A] hover:bg-[#4A4A4A] w-full text-left rounded-md transition duration-200 ease-in-out mt-2">
+                    <Link href={`/${session.user.name.split(' ')[0]}/saved`} className="block px-4 py-2 text-sm text-white bg-[#3A3A3A] hover:bg-[#4A4A4A] w-full text-left rounded-md transition duration-200 ease-in-out mt-2">
                       <span className="font-medium">Saved Playlists</span>
                     </Link>
                     <button

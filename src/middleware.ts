@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { env } from './env';
+import { useSession } from 'next-auth/react';
 
 const secret = env.NEXTAUTH_SECRET; // Add your secret here
 
@@ -14,7 +15,7 @@ export async function middleware(req: NextRequest) {
     // Handle redirection logic
     if (pathname === '/login' && token) {
         // Redirect authenticated users from /login to /dashboard
-        return NextResponse.redirect(new URL('/dashboard', req.url));
+        return NextResponse.redirect(new URL(`/dashboard`, req.url));
     }
 
     if (pathname === '/' && token) {

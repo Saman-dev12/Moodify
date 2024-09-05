@@ -7,42 +7,79 @@ import GoogleProvider from "next-auth/providers/google";
 import SpotifyProvider from "next-auth/providers/spotify";
 
 import { env } from "~/env";
+import prisma from "~/utils/Prisma";
 
-/**
- * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
- * object and keep type safety.
- *
- * @see https://next-auth.js.org/getting-started/typescript#module-augmentation
- */
+
 declare module "next-auth" {
   interface Session extends DefaultSession {
     user: {
       id: string;
-      // ...other properties
-      // role: UserRole;
+      name : string;
+      email : string;
+      image : string;
     } & DefaultSession["user"];
   }
-
-  // interface User {
-  //   // ...other properties
-  //   // role: UserRole;
-  // }
 }
 
-/**
- * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
- *
- * @see https://next-auth.js.org/configuration/options
- */
+
 export const authOptions: NextAuthOptions = {
   callbacks: {
-    session: ({ session, token }) => ({
-      ...session,
-      user: {
-        ...session.user,
-        id: token.sub,
-      },
-    }),
+    async signIn(params) {
+      if (!params.user.email) {
+          return false;
+      }
+
+      try {
+          const existingUser = await prisma.user.findUnique({
+              where: {
+                  email: params.user.email
+              }
+          })
+          if (existingUser) {
+              return true
+          }
+          await prisma.user.create({
+              data: {
+                name : params.user.name,
+                image:params.user.image,
+                  email: params.user.email,
+                  provider: "Google",
+              } 
+          })
+          return true;
+       } catch(e) {
+          console.log(e);
+          return false;
+       }
+  },
+  jwt: async ({ token, user }) => {
+    if (user) {
+      token.id = user.id as string;
+      token.name = (user as { username?: string }).username || '';
+      token.email = user.email as string;
+      token.image = user.image
+    }
+    return token;
+  },
+     async session({ session, token, user }){
+      const dbUser = await prisma.user.findUnique({
+        where: {
+          email: session.user.email as string
+        }
+      });
+      if (!dbUser) {
+        return session;
+      }
+      return {
+        ...session, 
+        user: {
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          image : dbUser.image
+        }
+      };
+    }
   },
   providers: [
     GoogleProvider({
@@ -50,24 +87,12 @@ export const authOptions: NextAuthOptions = {
       clientSecret: env.GOOGLE_CLIENT_SECRET,
     }),
     SpotifyProvider({
-      clientId:env.SPOTIFY_CLIENT_ID,
-      clientSecret:env.SPOTIFY_CLIENT_SECRET
+      clientId: env.SPOTIFY_CLIENT_ID,
+      clientSecret: env.SPOTIFY_CLIENT_SECRET
     })
-    /**
-     * ...add more providers here.
-     *
-     * Most other providers require a bit more work than the Discord provider. For example, the
-     * GitHub provider requires you to add the `refresh_token_expires_in` field to the Account
-     * model. Refer to the NextAuth.js docs for the provider you want to use. Example:
-     *
-     * @see https://next-auth.js.org/providers/github
-     */
   ],
+  secret: process.env.NEXTAUTH_SECRET ?? "secret",
 };
 
-/**
- * Wrapper for `getServerSession` so that you don't need to import the `authOptions` in every file.
- *
- * @see https://next-auth.js.org/configuration/nextjs
- */
+
 export const getServerAuthSession = () => getServerSession(authOptions);

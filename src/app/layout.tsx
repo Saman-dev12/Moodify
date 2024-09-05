@@ -3,7 +3,7 @@ import "~/styles/globals.css";
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 import ProviderComponent from "~/utils/Provider";
-import Navbar from "./components/Navbar";
+import Navbar from "~/components/Navbar";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
