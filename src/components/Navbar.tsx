@@ -5,7 +5,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
 function Navbar() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
@@ -40,20 +40,20 @@ function Navbar() {
             </div>
           </div>
           <div className="ml-4 flex items-center md:ml-6 relative">
-            {session ? (
+            {status === "authenticated" ? (
               <>
                 <div className="flex-shrink-0">
                   <button onClick={toggleDropdown}>
-                    {session.user.image && (
+                    {session?.user?.image && (
                       <img src={session.user.image} alt="User Avatar" className="h-10 w-10 rounded-full" />
                     )}
                   </button>
                 </div>
                 {isDropdownOpen && (
                   <div id="dropdown" className="absolute top-10 right-0 w-64 bg-[#2E2E2E] rounded-lg shadow-lg z-10 transition-transform transform scale-95 origin-top-right p-4">
-                    <div className="block px-4 py-2 text-sm text-gray-300 font-semibold w-full text-left">Welcome back, {session.user.email}!</div>
+                    <div className="block px-4 py-2 text-sm text-gray-300 font-semibold w-full text-left">Welcome back, {session?.user?.email}!</div>
                     
-                    <Link href={`/${session.user.name.split(' ')[0]}/saved`} className="block px-4 py-2 text-sm text-white bg-[#3A3A3A] hover:bg-[#4A4A4A] w-full text-left rounded-md transition duration-200 ease-in-out mt-2">
+                    <Link href={`/${session?.user?.name?.split(' ')[0]}/saved`} className="block px-4 py-2 text-sm text-white bg-[#3A3A3A] hover:bg-[#4A4A4A] w-full text-left rounded-md transition duration-200 ease-in-out mt-2">
                       <span className="font-medium">Saved Playlists</span>
                     </Link>
                     <button
@@ -69,13 +69,11 @@ function Navbar() {
                 )}
               </>
             ) : (
-              <>
-                <Link href={'/login'}
-                  className="ml-8 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#1DB954] hover:bg-[#1aa34a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1DB954]"
-                >
-                  Sign in
-                </Link>
-              </>
+              <Link href="/login"
+                className="ml-8 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#1DB954] hover:bg-[#1aa34a]"
+              >
+                Sign in
+              </Link>
             )}
           </div>
         </div>
