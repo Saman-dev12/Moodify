@@ -6,6 +6,7 @@ import Modal from '~/components/Modal';
 import { Music, Loader2, AlertCircle, PlusIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPlaylist } from '~/actions';
+import { useRouter } from 'next/navigation';
 
 interface Song {
     id: string;
@@ -27,6 +28,7 @@ function DashboardPage() {
     const [loading, setLoading] = useState(false);
     const [playlistName, setPlaylistName] = useState<string>('');
     const songsPerPage = 5;
+    const router = useRouter()
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -105,8 +107,9 @@ function DashboardPage() {
                             />
                         </div>
                     }
-                    onSave={() => {
-                        createPlaylist(playlistName);
+                    onSave={async() => {
+                        await createPlaylist(playlistName);
+                        router.push(`/${session?.user?.name?.split(' ')[0]}/saved`)
                     }}
                     saveButtonText="Create Playlist"
                 />

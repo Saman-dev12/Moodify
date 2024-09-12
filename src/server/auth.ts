@@ -38,14 +38,16 @@ export const authOptions: NextAuthOptions = {
           if (existingUser) {
               return true
           }
-          await prisma.user.create({
+          const data = await prisma.user.create({
               data: {
                 name : params.user.name,
                 image:params.user.image,
+                oauth_id : params.account?.providerAccountId!,
                   email: params.user.email,
-                  provider: "Google",
+                  provider: params.account?.provider!,
               } 
           })
+          params.user.id = data?.id.toString();
           return true;
        } catch(e) {
           console.log(e);
@@ -54,10 +56,7 @@ export const authOptions: NextAuthOptions = {
   },
   jwt: async ({ token, user }) => {
     if (user) {
-      token.id = user.id as string;
-      token.name = (user as { username?: string }).username || '';
-      token.email = user.email as string;
-      token.image = user.image
+      token.user = user;
     }
     return token;
   },
@@ -85,6 +84,13 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code",
+        },
+      },
     }),
     SpotifyProvider({
       clientId: env.SPOTIFY_CLIENT_ID,

@@ -19,6 +19,7 @@ model User {
   name     String?
   image    String?
   provider String
+  oauth_id String
   playlists Playlist[]
 }
 
